@@ -164,11 +164,19 @@ bot.action('finish_case', async (ctx) => {
   ctx.answerCbQuery();  // Ответ после выполнения действия
 });
 
-bot.launch().then(() => {
+const port = process.env.PORT || 3000; // Если переменная окружения PORT не установлена, используем 3000
+bot.launch({
+  webhook: {
+    domain: `https://case-1.onrender.com`, // замените на ваш домен
+    port: port,
+    hookPath: `/${process.env.TG_TOKEN}`,
+  }
+}).then(() => {
   console.log('✅ Бот запущен!');
 }).catch(err => {
   console.error('Ошибка запуска бота:', err);
 });
+
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
