@@ -71,6 +71,7 @@ bot.action('new_case', (ctx) => {
 
 // Обработка текста и сбор данных для нового кейса
 bot.on('text', async (ctx) => {
+ 
   const user = userState.get(ctx.from.id);
   if (!user) return;
 
@@ -166,16 +167,13 @@ bot.action('finish_case', async (ctx) => {
 
 const port = process.env.PORT || 3000; // Если переменная окружения PORT не установлена, используем 3000
 bot.launch({
-  webhook: {
-    domain: `https://case-1.onrender.com`, // замените на ваш домен
-    port: port,
-    hookPath: `/${process.env.TG_TOKEN}`,
-  }
+  polling: true,
 }).then(() => {
   console.log('✅ Бот запущен!');
 }).catch(err => {
   console.error('Ошибка запуска бота:', err);
 });
+
 
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
