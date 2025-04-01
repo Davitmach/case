@@ -81,10 +81,10 @@ bot.on('text', async (ctx) => {
     ctx.reply('Введите дату (YYYY-MM-DD):');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
-    user.step = 'case_type';  // Переходим к вводу типа кейса
-    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка  ботов", "Веб-Дизайн", "Интеграция ИИ", "Мобильные приложения"):');
+    user.step = 'case_type';
+    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка ботов", "Веб-Дизайн", "Интеграция ИИ", "Мобильные приложения"):');
   } else if (user.step === 'case_type') {
-    user.case_type = ctx.message.text;  // Сохраняем тип кейса
+    user.case_type = ctx.message.text;
     user.step = 'mainImg';
     ctx.reply('Отправьте URL главного изображения (mainImg):');
   } else if (user.step === 'mainImg') {
@@ -96,7 +96,8 @@ bot.on('text', async (ctx) => {
     user.step = 'info_title';
     ctx.reply('Введите заголовок информации (info title):');
   } else if (user.step === 'info_title') {
-    user.info = [{ title: ctx.message.text }];
+    if (!user.info) user.info = [];
+    user.info.push({ title: ctx.message.text, description: '' });  
     user.step = 'info_description';
     ctx.reply('Введите описание информации (info description):');
   } else if (user.step === 'info_description') {
@@ -107,6 +108,7 @@ bot.on('text', async (ctx) => {
     ]));
     user.step = 'wait';
   } else if (user.step === 'sliderImg') {
+    if (!user.sliderImg) user.sliderImg = [];
     user.sliderImg.push(ctx.message.text);
     ctx.reply('Добавить ещё изображение?', Markup.inlineKeyboard([
       [Markup.button.callback('➕ Да', 'add_slider')],
@@ -120,14 +122,29 @@ bot.on('text', async (ctx) => {
 
 
 
+
 bot.action('add_info', (ctx) => {
   const user = userState.get(ctx.from.id);
-  if (!user.info) user.info = [];  // Убедимся, что массив существует
-  user.info.push({ title: null, description: null }); // Добавляем новый пустой объект заранее
+
+
+  // Ensure the `info` array exists
+  if (!user.info) {
+    user.info = [];  // Create the array if it doesn't exist
+  }
+
+   // Check what's inside before the update
+  
+  // Add the new object to the `info` array
+  user.info.push({ title: null, description: null });
+
+  // Update the user's step and prompt for input
   user.step = 'info_title';
   ctx.reply('Введите заголовок информации (info title):');
+  
+  // Acknowledge the callback query
   ctx.answerCbQuery();
 });
+
 
 bot.on('text', async (ctx) => {
   const user = userState.get(ctx.from.id);
@@ -174,6 +191,7 @@ bot.action('finish_case', async (ctx) => {
 
     // Проверяем, есть ли информация перед вставкой
     if (user.info && user.info.length > 0) {
+
       for (const info of user.info) {
         if (info.title && info.description) {  // Проверяем, что поля заполнены
           await dbClient.query(
@@ -186,6 +204,8 @@ bot.action('finish_case', async (ctx) => {
 
     // Проверяем и вставляем изображения слайдера
     if (user.sliderImg && user.sliderImg.length > 0) {
+    
+      
       for (const img of user.sliderImg) {
         await dbClient.query(
           'INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
@@ -205,13 +225,13 @@ bot.action('finish_case', async (ctx) => {
 
 
 
-const DOMAIN = 'https://case-1.onrender.com'; // Укажите ваш реальный домен!
-const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; // Ваш токен
+const DOMAIN = 'https://case-1.onrender.com'; 
+const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; 
 
 bot.launch({
   webhook: {
     domain: DOMAIN,
-    port:  3000, 
+    port:  3002, 
     hookPath: `/${TOKEN}`
   }
 });
