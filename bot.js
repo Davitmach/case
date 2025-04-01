@@ -70,8 +70,8 @@ bot.action('new_case', (ctx) => {
 });
 
 // Обработка текста и сбор данных для нового кейса
+// Обработка текста и сбор данных для нового кейса
 bot.on('text', async (ctx) => {
- 
   const user = userState.get(ctx.from.id);
   if (!user) return;
 
@@ -81,6 +81,10 @@ bot.on('text', async (ctx) => {
     ctx.reply('Введите дату (YYYY-MM-DD):');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
+    user.step = 'case_type';  // Переходим к вводу типа кейса
+    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка  ботов", "Веб-Дизайн", "Интеграция ИИ", "Мобильные приложения"):');
+  } else if (user.step === 'case_type') {
+    user.case_type = ctx.message.text;  // Сохраняем тип кейса
     user.step = 'mainImg';
     ctx.reply('Отправьте URL главного изображения (mainImg):');
   } else if (user.step === 'mainImg') {
@@ -112,6 +116,10 @@ bot.on('text', async (ctx) => {
   }
 });
 
+
+
+
+
 bot.action('add_info', (ctx) => {
   const user = userState.get(ctx.from.id);
   user.info.push({});
@@ -139,17 +147,19 @@ bot.action('finish_case', async (ctx) => {
   const user = userState.get(ctx.from.id);
   try {
     const caseRes = await dbClient.query(
-      'INSERT INTO cases (title, date, mainImg, innerImg) VALUES ($1, $2, $3, $4) RETURNING id',
-      [user.title, user.date, user.mainImg, user.innerImg]
+      'INSERT INTO cases (title, date, mainImg, innerImg, case_type) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+      [user.title, user.date, user.mainImg, user.innerImg, user.case_type]  // Добавляем case_type
     );
     const caseId = caseRes.rows[0].id;
 
+    // Сохранение информации
     for (const info of user.info) {
       await dbClient.query('INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)',
         [caseId, info.title, info.description]
       );
     }
 
+    // Сохранение изображений слайдера
     for (const img of user.sliderImg) {
       await dbClient.query('INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
         [caseId, img]
@@ -164,6 +174,7 @@ bot.action('finish_case', async (ctx) => {
   }
   ctx.answerCbQuery();  // Ответ после выполнения действия
 });
+
 
 const DOMAIN = 'https://case-1.onrender.com'; // Укажите ваш реальный домен!
 const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; // Ваш токен
