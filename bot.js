@@ -1,40 +1,33 @@
 const { Telegraf, Markup } = require('telegraf');
-const { Client } = require('pg'); // Подключаем PostgreSQL клиент
-require('dotenv').config(); // Загружаем переменные окружения из .env файла
+const { Client } = require('pg');
+require('dotenv').config();
 
-const BOT_TOKEN = process.env.TG_TOKEN; // Замените на свой токен
+const BOT_TOKEN = process.env.TG_TOKEN;
 const bot = new Telegraf(BOT_TOKEN);
 
-// Создаем подключение к базе данных PostgreSQL
 const dbClient = new Client({
-  connectionString: 'postgresql://david:5o7AIPBP4WU2AfaRyAzqY1xTubmsjyR4@dpg-cvlnm6idbo4c7385v990-a.oregon-postgres.render.com/case_31na',
-  ssl: {
-    rejectUnauthorized: false,  // Включаем SSL, но не проверяем сертификат (если это необходимо)
-  },
+  connectionString: "postgresql://david:5o7AIPBP4WU2AfaRyAzqY1xTubmsjyR4@dpg-cvlnm6idbo4c7385v990-a.oregon-postgres.render.com/case_31na",
+  ssl: { rejectUnauthorized: false },
 });
 
-// Функция для подключения к базе данных с повторными попытками
 const connectToDatabase = async () => {
   try {
     await dbClient.connect();
     console.log('Подключение к базе данных установлено!');
   } catch (err) {
     console.error('Ошибка подключения к базе данных:', err);
-    // Повторная попытка через 5 секунд
     setTimeout(connectToDatabase, 5000);
   }
 };
-
-// Подключаемся к базе данных
 connectToDatabase();
 
+const userState = new Map();
+
 bot.start((ctx) => {
-  // Отправляем сообщение при запуске бота
-  ctx.reply('Привет! Добро пожаловать в нашего бота.');
   ctx.reply(
-    'Выберите действие:',
-    Markup.inlineKeyboard([ 
-      [Markup.button.callback('☰ Меню', 'open_menu')] // Кнопка для открытия меню
+    'Привет! Выберите действие:',
+    Markup.inlineKeyboard([
+      [Markup.button.callback('☰ Меню', 'open_menu')],
     ])
   );
 });
@@ -45,7 +38,7 @@ bot.action('open_menu', (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback('📦 Получить все кейсы', 'get_cases')],
       [Markup.button.callback('➕ Новый кейс', 'new_case')],
-      [Markup.button.callback('❌ Закрыть меню', 'close_menu')] // Кнопка для закрытия меню
+      [Markup.button.callback('❌ Закрыть меню', 'close_menu')],
     ])
   );
   ctx.answerCbQuery();
@@ -54,15 +47,13 @@ bot.action('open_menu', (ctx) => {
 // Обработка запроса на получение всех кейсов из базы данных
 bot.action('get_cases', async (ctx) => {
   try {
-    // Выполняем запрос к базе данных
     const res = await dbClient.query('SELECT * FROM cases'); // Замените 'cases' на ваше название таблицы
     const cases = res.rows;
 
     if (cases.length > 0) {
-      // Отправляем пользователю список всех кейсов
       let message = 'Вот все доступные кейсы:\n';
       cases.forEach((caseItem, index) => {
-        message += `${index + 1}. ${caseItem.name} - ${caseItem.description}\n`; // Замените 'name' и 'description' на реальные поля вашей таблицы
+        message += `${index + 1}. ${caseItem.title} - ${caseItem.date}\n`; // Здесь можно добавить другие поля
       });
       ctx.reply(message);
     } else {
@@ -76,16 +67,105 @@ bot.action('get_cases', async (ctx) => {
 });
 
 bot.action('new_case', (ctx) => {
-  ctx.reply('Создан новый кейс!');
+  userState.set(ctx.from.id, { step: 'title' });
+  ctx.reply('Введите название кейса (Title):');
   ctx.answerCbQuery();
 });
 
-bot.action('close_menu', (ctx) => {
-  ctx.editMessageText('Меню закрыто.');
+bot.on('text', async (ctx) => {
+  const user = userState.get(ctx.from.id);
+  if (!user) return;
+
+  if (user.step === 'title') {
+    user.title = ctx.message.text;
+    user.step = 'date';
+    ctx.reply('Введите дату (YYYY-MM-DD):');
+  } else if (user.step === 'date') {
+    user.date = ctx.message.text;
+    user.step = 'mainImg';
+    ctx.reply('Отправьте URL главного изображения (mainImg):');
+  } else if (user.step === 'mainImg') {
+    user.mainImg = ctx.message.text;
+    user.step = 'innerImg';
+    ctx.reply('Отправьте URL внутреннего изображения (innerImg):');
+  } else if (user.step === 'innerImg') {
+    user.innerImg = ctx.message.text;
+    user.step = 'info_title';
+    ctx.reply('Введите заголовок информации (info title):');
+  } else if (user.step === 'info_title') {
+    user.info = [{ title: ctx.message.text }];
+    user.step = 'info_description';
+    ctx.reply('Введите описание информации (info description):');
+  } else if (user.step === 'info_description') {
+    user.info[user.info.length - 1].description = ctx.message.text;
+    ctx.reply('Добавить ещё информацию?', Markup.inlineKeyboard([
+      [Markup.button.callback('➕ Да', 'add_info')],
+      [Markup.button.callback('➡️ Перейти к изображениям', 'next_slider')]
+    ]));
+    user.step = 'wait';
+  } else if (user.step === 'sliderImg') {
+    user.sliderImg.push(ctx.message.text);
+    ctx.reply('Добавить ещё изображение?', Markup.inlineKeyboard([
+      [Markup.button.callback('➕ Да', 'add_slider')],
+      [Markup.button.callback('✅ Завершить', 'finish_case')]
+    ]));
+    user.step = 'wait';
+  }
+});
+
+bot.action('add_info', (ctx) => {
+  const user = userState.get(ctx.from.id);
+  user.info.push({});
+  user.step = 'info_title';
+  ctx.reply('Введите заголовок информации (info title):');
   ctx.answerCbQuery();
 });
 
-// Запуск бота с long polling
+bot.action('next_slider', (ctx) => {
+  const user = userState.get(ctx.from.id);
+  user.sliderImg = [];
+  user.step = 'sliderImg';
+  ctx.reply('Отправьте URL изображения для слайдера:');
+  ctx.answerCbQuery();
+});
+
+bot.action('add_slider', (ctx) => {
+  const user = userState.get(ctx.from.id);
+  user.step = 'sliderImg';
+  ctx.reply('Отправьте URL следующего изображения для слайдера:');
+  ctx.answerCbQuery();
+});
+
+bot.action('finish_case', async (ctx) => {
+  const user = userState.get(ctx.from.id);
+  try {
+    const caseRes = await dbClient.query(
+      'INSERT INTO cases (title, date, mainImg, innerImg) VALUES ($1, $2, $3, $4) RETURNING id',
+      [user.title, user.date, user.mainImg, user.innerImg]
+    );
+    const caseId = caseRes.rows[0].id;
+
+    for (const info of user.info) {
+      await dbClient.query('INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)', 
+        [caseId, info.title, info.description]
+      );
+    }
+
+    for (const img of user.sliderImg) {
+      await dbClient.query('INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)', 
+        [caseId, img]
+      );
+    }
+
+    ctx.reply('✅ Кейс успешно сохранён!');
+    userState.delete(ctx.from.id);
+  } catch (err) {
+    console.error('Ошибка при сохранении кейса:', err);
+    ctx.reply('❌ Ошибка при сохранении кейса.');
+  }
+  ctx.answerCbQuery();
+});
+
 bot.launch().then(() => {
   console.log('✅ Бот запущен!');
 }).catch(err => {
