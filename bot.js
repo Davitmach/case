@@ -30,14 +30,75 @@ const connectToDatabase = async () => {
   }
 };
 connectToDatabase();
-
+const validateEmail = (email) => {
+  const regex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+  return regex.test(email);
+};
 const userState = new Map();
-
+bot.telegram.setMyCommands([
+ 
+  { command: 'start', description: '👋 Начать' },
+  { command: '/help', description: '❓ Помощь' },
+  { command: '/website', description: '🌐 Наш веб-сайт' },
+  { command: '/channel', description: '📱 Наш Telegram-канал' },
+  { command: '/email', description: '✉ Написать на почту' },
+  { command: '/team', description: '👥 Наша команда' },
+  { command: '/request', description: '📄 Оставить заявку' },  // Add this line
+]);
 bot.start((ctx) => {
   if (!isUserAllowed(ctx)) return;
-  ctx.reply('Добро пожаловать! Сразу выберите действие:', Markup.inlineKeyboard([
-    [Markup.button.callback('☰ Меню', 'open_menu')],
-  ]));
+  ctx.reply('🎉 Добро пожаловать! 👋\n\n' +
+    'Готовы к действию? Выберите, что вас интересует, и я помогу вам!\n\n' +
+    '👇 Нажмите кнопку ниже, чтобы открыть меню.',
+Markup.inlineKeyboard([
+[Markup.button.callback('☰ Открыть меню', 'open_menu')]
+])
+);
+});
+bot.command('request', async (ctx) => {
+
+
+  userState.set(ctx.from.id, { step: 'name' });
+  ctx.reply('👤 Оставьте заявку:\n\nПожалуйста, введите ваше имя:');
+});
+bot.command('email', async (ctx) => {
+  await ctx.reply('Если у вас есть вопросы, пишите на почту: hello@itperfomance.ru');
+});
+bot.command('team', async (ctx) => {
+  const res = await dbClient.query('SELECT * FROM cases');
+  const cases = res.rows;
+  
+  
+  await ctx.reply(
+    `👥 *Наша команда:*\n\n` +
+    `🔹 *Альберт* — Основатель компании\n` +
+    `🔹 *Давид* — Фронтенд-разработчик\n` +
+    `🔹 *Максим* — Линукс, Python\n` +
+    `🔹 *Данил* — Веб-дизайнер, Figma\n`+
+       `📊 *Количество сделанных проектов*: ${cases.length}`
+  );
+});
+bot.command('channel', async (ctx) => {
+  await ctx.reply('🚀 Перейдите в наш Telegram-канал: [кликай](https://t.me/itperfomanceru)', {
+    parse_mode: 'Markdown'
+  });
+});
+bot.command('website', async (ctx) => {
+  await ctx.reply(
+    'Перейдите на наш веб-сайт:',
+    {
+      reply_markup: {
+        inline_keyboard: [
+          [
+            {
+              text: '🌐 Наш веб-сайт',
+              url: 'https://itperfomance.ru'  // Замените на свой реальный URL
+            }
+          ]
+        ]
+      }
+    }
+  );
 });
 
 bot.action('open_menu', (ctx) => {
@@ -47,34 +108,111 @@ bot.action('open_menu', (ctx) => {
     Markup.inlineKeyboard([
       [Markup.button.callback('📦 Получить все кейсы', 'get_cases')],
       [Markup.button.callback('➕ Новый кейс', 'new_case')],
+
      
     ])
   );
   ctx.answerCbQuery();  // Немедленный ответ
 });
 
+bot.on('text', async (ctx) => {
+  const user = userState.get(ctx.from.id);
+  if (!user) return;
+
+  if (user.step === 'name') {
+    user.name = ctx.message.text;
+    user.step = 'position';
+    ctx.reply('Введите вашу должность:');
+  } else if (user.step === 'position') {
+    user.position = ctx.message.text;
+    user.step = 'phone';
+    ctx.reply('Введите ваш номер телефона:');
+  } else if (user.step === 'phone') {
+    user.phone = ctx.message.text;
+    user.step = 'email';
+    ctx.reply('Введите ваш email:');
+  } else if (user.step === 'email') {
+    const email = ctx.message.text;
+    if (validateEmail(email)) {
+      user.email = email;
+      user.step = 'finish';
+      ctx.reply('✅ Ваша заявка успешно отправлена!');
+      
+      // Отправляем данные в API
+      const data = {
+        name: user.name,
+        position: user.position,
+        phone: user.phone,
+        email: user.email,
+      };
+
+      try {
+        await fetch('https://itperfomance.ru/api/sheets/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        console.log('✅ Ваша заявка успешно отправлена!');
+      } catch (err) {
+        console.error('Ошибка при отправке заявки:', err);
+        ctx.reply('❌ Ошибка при отправке заявки.');
+      }
+
+      userState.delete(ctx.from.id);
+    } else {
+      ctx.reply('❌ Неверный формат email. Пожалуйста, введите корректный email (например, example@mail.com).');
+    }
+  }
+});
+bot.command('help', async (ctx) => {  
+  if (!isUserAllowed(ctx)) return;  
+
+  await ctx.reply(
+    `📌 *Команды бота:*\n` +
+    `🔹 /start — Начать работу\n` +
+    `🔹 /help — Открыть справку\n\n` +
+    `🎛 *Меню действий:*\n` +
+    `✅ Получить все кейсы\n` +
+    `➕ Новый кейс\n` +
+
+    `👮‍♂ *Доступ:*\n` +
+    `Некоторые команды доступны не всем пользователям.\n\n` +
+    `✉ *Обратная связь:* Если есть вопросы, пиши администратору! 🚀`,
+    { parse_mode: 'Markdown' }
+  );  
+
+});
+
 // Обработка запроса на получение всех кейсов
 bot.action('get_cases', async (ctx) => {
   if (!isUserAllowed(ctx)) return;
+  
   try {
     const res = await dbClient.query('SELECT * FROM cases');
     const cases = res.rows;
 
     if (cases.length > 0) {
-      let message = 'Вот все доступные кейсы:\n';
-      cases.forEach((caseItem, index) => {
-        message += `${index + 1}. ${caseItem.title} - ${caseItem.date}\n`;
-      });
-      ctx.reply(message);
+      for (const caseItem of cases) {
+        ctx.reply(
+          `🆔 ID: ${caseItem.id}\n📌 Название: ${caseItem.title}\n📅 Дата: ${caseItem.date}`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('❌ Удалить', `delete_case_${caseItem.id}`)]
+          ])
+        );
+      }
     } else {
-      ctx.reply('Нет доступных кейсов.');
+      ctx.reply('⚠️ Нет доступных кейсов.');
     }
   } catch (err) {
     console.error('Ошибка при получении кейсов:', err);
-    ctx.reply('Произошла ошибка при получении кейсов. Попробуйте снова позже.');
+    ctx.reply('❌ Произошла ошибка при получении кейсов.');
   }
-  ctx.answerCbQuery();  // Ответ после выполнения действия
+
+  ctx.answerCbQuery();
 });
+
 
 bot.action('new_case', (ctx) => {
   if (!isUserAllowed(ctx)) return;
@@ -92,7 +230,7 @@ bot.on('text', async (ctx) => {
   if (user.step === 'title') {
     user.title = ctx.message.text;
     user.step = 'date';
-    ctx.reply('Введите дату (YYYY-MM-DD):');
+    ctx.reply('Введите дату:');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
     user.step = 'case_type';
@@ -236,21 +374,42 @@ bot.action('finish_case', async (ctx) => {
   }
   ctx.answerCbQuery();
 });
+bot.action(/^delete_case_(\d+)$/, async (ctx) => {
+  if (!isUserAllowed(ctx)) return;
 
+  const caseId = ctx.match[1]; // Получаем ID кейса из callback data
 
+  try {
+    // Удаляем связанные данные (если есть таблицы info и sliderImg)
+    await dbClient.query('DELETE FROM info WHERE case_id = $1', [caseId]);
+    await dbClient.query('DELETE FROM sliderImg WHERE case_id = $1', [caseId]);
+    
+    // Удаляем сам кейс
+    await dbClient.query('DELETE FROM cases WHERE id = $1', [caseId]);
 
-const DOMAIN = 'https://case-1.onrender.com'; 
-const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; 
-
-bot.launch({
-  webhook: {
-    domain: DOMAIN,
-    port:  3002, 
-    hookPath: `/${TOKEN}`
+    ctx.reply(`✅ Кейс с ID ${caseId} успешно удалён.`);
+  } catch (err) {
+    console.error('Ошибка при удалении кейса:', err);
+    ctx.reply('❌ Ошибка при удалении кейса.');
   }
+
+  ctx.answerCbQuery();
 });
 
 
+
+// const DOMAIN = 'https://case-1.onrender.com'; 
+// const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; 
+
+// bot.launch({
+//   webhook: {
+//     domain: DOMAIN,
+//     port:  3002, 
+//     hookPath: `/${TOKEN}`
+//   }
+// });
+
+bot.launch()
 
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
