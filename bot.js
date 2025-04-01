@@ -182,7 +182,7 @@ const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; // Ваш ток
 bot.launch({
   webhook: {
     domain: DOMAIN,
-    port: process.env.PORT || 3000, 
+    port:  3000, 
     hookPath: `/${TOKEN}`
   }
 });
