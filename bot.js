@@ -33,7 +33,7 @@ bot.start((ctx) => {
   ctx.reply('Привет! Добро пожаловать в нашего бота.');
   ctx.reply(
     'Выберите действие:',
-    Markup.inlineKeyboard([
+    Markup.inlineKeyboard([ 
       [Markup.button.callback('☰ Меню', 'open_menu')] // Кнопка для открытия меню
     ])
   );
@@ -85,15 +85,11 @@ bot.action('close_menu', (ctx) => {
   ctx.answerCbQuery();
 });
 
-// Динамическое указание порта для Render
-const PORT = process.env.PORT || 3000;
-
-bot.launch({
-  webhook: {
-    port: PORT
-  }
-}).then(() => {
+// Запуск бота с long polling
+bot.launch().then(() => {
   console.log('✅ Бот запущен!');
+}).catch(err => {
+  console.error('Ошибка запуска бота:', err);
 });
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
