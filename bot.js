@@ -165,13 +165,14 @@ bot.action('finish_case', async (ctx) => {
   ctx.answerCbQuery();  // Ответ после выполнения действия
 });
 
-const port = process.env.PORT || 3000; // Если переменная окружения PORT не установлена, используем 3000
+const DOMAIN = 'https://your-real-domain.com'; // Укажите ваш реальный домен!
+const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; // Ваш токен
 
 bot.launch({
   webhook: {
-    domain: 'https://your-domain.com',  // замените на ваш домен
-    port: port,  // Используем автоматически определенный порт
-    hookPath: `/${process.env.TG_TOKEN}`,
+    domain: DOMAIN,
+    port: process.env.PORT || 3000, 
+    hookPath: `/${TOKEN}`
   }
 });
 
