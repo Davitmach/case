@@ -38,7 +38,7 @@ const userState = new Map();
 bot.telegram.setMyCommands([
  
   { command: 'start', description: '👋 Начать' },
-  { command: '/help', description: '❓ Помощь' },
+
   { command: '/website', description: '🌐 Наш веб-сайт' },
   { command: '/channel', description: '📱 Наш Telegram-канал' },
   { command: '/email', description: '✉ Написать на почту' },
