@@ -24,12 +24,9 @@ connectToDatabase();
 const userState = new Map();
 
 bot.start((ctx) => {
-  ctx.reply(
-    'Привет! Выберите действие:',
-    Markup.inlineKeyboard([
-      [Markup.button.callback('☰ Меню', 'open_menu')],
-    ])
-  );
+  ctx.reply('Добро пожаловать! Сразу выберите действие:', Markup.inlineKeyboard([
+    [Markup.button.callback('☰ Меню', 'open_menu')],
+  ]));
 });
 
 bot.action('open_menu', (ctx) => {
@@ -41,19 +38,19 @@ bot.action('open_menu', (ctx) => {
       [Markup.button.callback('❌ Закрыть меню', 'close_menu')],
     ])
   );
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Немедленный ответ
 });
 
-// Обработка запроса на получение всех кейсов из базы данных
+// Обработка запроса на получение всех кейсов
 bot.action('get_cases', async (ctx) => {
   try {
-    const res = await dbClient.query('SELECT * FROM cases'); // Замените 'cases' на ваше название таблицы
+    const res = await dbClient.query('SELECT * FROM cases');
     const cases = res.rows;
 
     if (cases.length > 0) {
       let message = 'Вот все доступные кейсы:\n';
       cases.forEach((caseItem, index) => {
-        message += `${index + 1}. ${caseItem.title} - ${caseItem.date}\n`; // Здесь можно добавить другие поля
+        message += `${index + 1}. ${caseItem.title} - ${caseItem.date}\n`;
       });
       ctx.reply(message);
     } else {
@@ -63,15 +60,16 @@ bot.action('get_cases', async (ctx) => {
     console.error('Ошибка при получении кейсов:', err);
     ctx.reply('Произошла ошибка при получении кейсов. Попробуйте снова позже.');
   }
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Ответ после выполнения действия
 });
 
 bot.action('new_case', (ctx) => {
   userState.set(ctx.from.id, { step: 'title' });
   ctx.reply('Введите название кейса (Title):');
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Ответ сразу
 });
 
+// Обработка текста и сбор данных для нового кейса
 bot.on('text', async (ctx) => {
   const user = userState.get(ctx.from.id);
   if (!user) return;
@@ -118,7 +116,7 @@ bot.action('add_info', (ctx) => {
   user.info.push({});
   user.step = 'info_title';
   ctx.reply('Введите заголовок информации (info title):');
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Немедленный ответ
 });
 
 bot.action('next_slider', (ctx) => {
@@ -126,14 +124,14 @@ bot.action('next_slider', (ctx) => {
   user.sliderImg = [];
   user.step = 'sliderImg';
   ctx.reply('Отправьте URL изображения для слайдера:');
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Немедленный ответ
 });
 
 bot.action('add_slider', (ctx) => {
   const user = userState.get(ctx.from.id);
   user.step = 'sliderImg';
   ctx.reply('Отправьте URL следующего изображения для слайдера:');
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Немедленный ответ
 });
 
 bot.action('finish_case', async (ctx) => {
@@ -146,13 +144,13 @@ bot.action('finish_case', async (ctx) => {
     const caseId = caseRes.rows[0].id;
 
     for (const info of user.info) {
-      await dbClient.query('INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)', 
+      await dbClient.query('INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)',
         [caseId, info.title, info.description]
       );
     }
 
     for (const img of user.sliderImg) {
-      await dbClient.query('INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)', 
+      await dbClient.query('INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
         [caseId, img]
       );
     }
@@ -163,7 +161,7 @@ bot.action('finish_case', async (ctx) => {
     console.error('Ошибка при сохранении кейса:', err);
     ctx.reply('❌ Ошибка при сохранении кейса.');
   }
-  ctx.answerCbQuery();
+  ctx.answerCbQuery();  // Ответ после выполнения действия
 });
 
 bot.launch().then(() => {
