@@ -1,9 +1,19 @@
 const { Telegraf, Markup } = require('telegraf');
 const { Client } = require('pg');
 require('dotenv').config();
-
+const allowedUsers = [1615644899, 1974611991, 482233894, 5590809125];
 const BOT_TOKEN = process.env.TG_TOKEN;
 const bot = new Telegraf(BOT_TOKEN);
+
+
+const isUserAllowed = (ctx) => {
+  if (!allowedUsers.includes(ctx.from.id)) {
+    ctx.reply('❌ У вас нет прав для выполнения этой команды.');
+    return false;
+  }
+  return true;
+};
+ 
 
 const dbClient = new Client({
   connectionString: "postgresql://david:5o7AIPBP4WU2AfaRyAzqY1xTubmsjyR4@dpg-cvlnm6idbo4c7385v990-a.oregon-postgres.render.com/case_31na",
@@ -24,18 +34,20 @@ connectToDatabase();
 const userState = new Map();
 
 bot.start((ctx) => {
+  if (!isUserAllowed(ctx)) return;
   ctx.reply('Добро пожаловать! Сразу выберите действие:', Markup.inlineKeyboard([
     [Markup.button.callback('☰ Меню', 'open_menu')],
   ]));
 });
 
 bot.action('open_menu', (ctx) => {
+  if (!isUserAllowed(ctx)) return;
   ctx.editMessageText(
     'Меню действий:',
     Markup.inlineKeyboard([
       [Markup.button.callback('📦 Получить все кейсы', 'get_cases')],
       [Markup.button.callback('➕ Новый кейс', 'new_case')],
-      [Markup.button.callback('❌ Закрыть меню', 'close_menu')],
+     
     ])
   );
   ctx.answerCbQuery();  // Немедленный ответ
@@ -43,6 +55,7 @@ bot.action('open_menu', (ctx) => {
 
 // Обработка запроса на получение всех кейсов
 bot.action('get_cases', async (ctx) => {
+  if (!isUserAllowed(ctx)) return;
   try {
     const res = await dbClient.query('SELECT * FROM cases');
     const cases = res.rows;
@@ -64,6 +77,7 @@ bot.action('get_cases', async (ctx) => {
 });
 
 bot.action('new_case', (ctx) => {
+  if (!isUserAllowed(ctx)) return;
   userState.set(ctx.from.id, { step: 'title' });
   ctx.reply('Введите название кейса (Title):');
   ctx.answerCbQuery();  // Ответ сразу
@@ -235,6 +249,7 @@ bot.launch({
     hookPath: `/${TOKEN}`
   }
 });
+
 
 
 
