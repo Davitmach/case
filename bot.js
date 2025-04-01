@@ -122,11 +122,31 @@ bot.on('text', async (ctx) => {
 
 bot.action('add_info', (ctx) => {
   const user = userState.get(ctx.from.id);
-  user.info.push({});
+  if (!user.info) user.info = [];  // Убедимся, что массив существует
+  user.info.push({ title: null, description: null }); // Добавляем новый пустой объект заранее
   user.step = 'info_title';
   ctx.reply('Введите заголовок информации (info title):');
-  ctx.answerCbQuery();  // Немедленный ответ
+  ctx.answerCbQuery();
 });
+
+bot.on('text', async (ctx) => {
+  const user = userState.get(ctx.from.id);
+  if (!user) return;
+
+  if (user.step === 'info_title') {
+    user.info[user.info.length - 1].title = ctx.message.text;  // Заполняем заголовок в последнем объекте
+    user.step = 'info_description';
+    ctx.reply('Введите описание информации (info description):');
+  } else if (user.step === 'info_description') {
+    user.info[user.info.length - 1].description = ctx.message.text;  // Заполняем описание в последнем объекте
+    ctx.reply('Добавить ещё информацию?', Markup.inlineKeyboard([
+      [Markup.button.callback('➕ Да', 'add_info')],
+      [Markup.button.callback('➡️ Перейти к изображениям', 'next_slider')]
+    ]));
+    user.step = 'wait';
+  }
+});
+
 
 bot.action('next_slider', (ctx) => {
   const user = userState.get(ctx.from.id);
@@ -148,22 +168,30 @@ bot.action('finish_case', async (ctx) => {
   try {
     const caseRes = await dbClient.query(
       'INSERT INTO cases (title, date, mainImg, innerImg, case_type) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-      [user.title, user.date, user.mainImg, user.innerImg, user.case_type]  // Добавляем case_type
+      [user.title, user.date, user.mainImg, user.innerImg, user.case_type]
     );
     const caseId = caseRes.rows[0].id;
 
-    // Сохранение информации
-    for (const info of user.info) {
-      await dbClient.query('INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)',
-        [caseId, info.title, info.description]
-      );
+    // Проверяем, есть ли информация перед вставкой
+    if (user.info && user.info.length > 0) {
+      for (const info of user.info) {
+        if (info.title && info.description) {  // Проверяем, что поля заполнены
+          await dbClient.query(
+            'INSERT INTO info (case_id, title, description) VALUES ($1, $2, $3)',
+            [caseId, info.title, info.description]
+          );
+        }
+      }
     }
 
-    // Сохранение изображений слайдера
-    for (const img of user.sliderImg) {
-      await dbClient.query('INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
-        [caseId, img]
-      );
+    // Проверяем и вставляем изображения слайдера
+    if (user.sliderImg && user.sliderImg.length > 0) {
+      for (const img of user.sliderImg) {
+        await dbClient.query(
+          'INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
+          [caseId, img]
+        );
+      }
     }
 
     ctx.reply('✅ Кейс успешно сохранён!');
@@ -172,8 +200,9 @@ bot.action('finish_case', async (ctx) => {
     console.error('Ошибка при сохранении кейса:', err);
     ctx.reply('❌ Ошибка при сохранении кейса.');
   }
-  ctx.answerCbQuery();  // Ответ после выполнения действия
+  ctx.answerCbQuery();
 });
+
 
 
 const DOMAIN = 'https://case-1.onrender.com'; // Укажите ваш реальный домен!
