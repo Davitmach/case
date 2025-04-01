@@ -165,7 +165,7 @@ bot.action('finish_case', async (ctx) => {
   ctx.answerCbQuery();  // Ответ после выполнения действия
 });
 
-const DOMAIN = 'https://your-real-domain.com'; // Укажите ваш реальный домен!
+const DOMAIN = 'https://case-1.onrender.com'; // Укажите ваш реальный домен!
 const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; // Ваш токен
 
 bot.launch({
