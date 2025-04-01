@@ -166,16 +166,13 @@ bot.action('finish_case', async (ctx) => {
 });
 
 const port = process.env.PORT || 3000; // Если переменная окружения PORT не установлена, используем 3000
-bot.telegram.deleteWebhook().then(() => {
-  bot.launch({
-    polling: true, // Использование polling вместо webhook
-  }).then(() => {
-    console.log('✅ Бот запущен!');
-  }).catch(err => {
-    console.error('Ошибка запуска бота:', err);
-  });
-}).catch(err => {
-  console.error('Ошибка при удалении webhook:', err);
+
+bot.launch({
+  webhook: {
+    domain: 'https://your-domain.com',  // замените на ваш домен
+    port: port,  // Используем автоматически определенный порт
+    hookPath: `/${process.env.TG_TOKEN}`,
+  }
 });
 
 
