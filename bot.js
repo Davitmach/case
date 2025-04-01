@@ -90,7 +90,6 @@ const PORT = process.env.PORT || 3000;
 
 bot.launch({
   webhook: {
-    domain: process.env.WEBHOOK_DOMAIN, // Укажите ваш домен (если используете webhook)
     port: PORT
   }
 }).then(() => {
