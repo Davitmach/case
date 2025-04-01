@@ -398,18 +398,18 @@ bot.action(/^delete_case_(\d+)$/, async (ctx) => {
 
 
 
-// const DOMAIN = 'https://case-1.onrender.com'; 
-// const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; 
+const DOMAIN = 'https://case-1.onrender.com'; 
+const TOKEN = '8091735964:AAEzLzbMy07-NeBD88YQlwjpQnXHZ5opAMc'; 
 
-// bot.launch({
-//   webhook: {
-//     domain: DOMAIN,
-//     port:  3002, 
-//     hookPath: `/${TOKEN}`
-//   }
-// });
+bot.launch({
+  webhook: {
+    domain: DOMAIN,
+    port:  3002, 
+    hookPath: `/${TOKEN}`
+  }
+});
 
-bot.launch()
+// bot.launch()
 
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
