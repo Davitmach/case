@@ -85,7 +85,17 @@ bot.action('close_menu', (ctx) => {
   ctx.answerCbQuery();
 });
 
-bot.launch().then(() => console.log('✅ Бот запущен!'));
+// Динамическое указание порта для Render
+const PORT = process.env.PORT || 3000;
+
+bot.launch({
+  webhook: {
+    domain: process.env.WEBHOOK_DOMAIN, // Укажите ваш домен (если используете webhook)
+    port: PORT
+  }
+}).then(() => {
+  console.log('✅ Бот запущен!');
+});
 
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
