@@ -411,6 +411,7 @@ bot.launch({
     hookPath: `/${TOKEN}`
   }
 });
+// bot.launch()
 
 
 
