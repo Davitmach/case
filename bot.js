@@ -177,8 +177,8 @@ bot.action('new_case', (ctx) => {
 bot.on('text', async (ctx) => {
   const user = userState.get(ctx.from.id);
   
-console.log(1);
 
+  if (!isUserAllowed(ctx)) return;
   if (!user) return;
   if (user.step === 'name') {
     user.name = ctx.message.text;
@@ -229,7 +229,7 @@ console.log(1);
   if (user.step === 'title') {
     user.title = ctx.message.text;
     user.step = 'date';
-    ctx.reply('Введите дату (например, 2025-04-01):');
+    ctx.reply('Введите дату:');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
     user.step = 'case_type';
@@ -259,60 +259,16 @@ console.log(1);
     ]));
     user.step = 'wait';
   }
+  else if (user.step === 'sliderImg') {
+    if (!user.sliderImg) user.sliderImg = [];
+    user.sliderImg.push(ctx.message.text);
+    ctx.reply('Добавить ещё изображение?', Markup.inlineKeyboard([
+      [Markup.button.callback('➕ Да', 'add_slider')],
+      [Markup.button.callback('✅ Завершить', 'finish_case')]
+    ]));
+    user.step = 'wait';
+  }
 });
-// bot.on('text', async (ctx) => {
-//   console.log(1);
-  
-//   const user = userState.get(ctx.from.id);
-//   if (!user) return;
-
-//   if (user.step === 'name') {
-//     user.name = ctx.message.text;
-//     user.step = 'position';
-//     ctx.reply('Введите вашу должность:');
-//   } else if (user.step === 'position') {
-//     user.position = ctx.message.text;
-//     user.step = 'phone';
-//     ctx.reply('Введите ваш номер телефона:');
-//   } else if (user.step === 'phone') {
-//     user.phone = ctx.message.text;
-//     user.step = 'email';
-//     ctx.reply('Введите ваш email:');
-//   } else if (user.step === 'email') {
-//     const email = ctx.message.text;
-//     if (validateEmail(email)) {
-//       user.email = email;
-//       user.step = 'finish';
-//       ctx.reply('✅ Ваша заявка успешно отправлена!');
-      
-//       // Отправляем данные в API
-//       const data = {
-//         name: user.name,
-//         position: user.position,
-//         phone: user.phone,
-//         email: user.email,
-//       };
-
-//       try {
-//         await fetch('https://itperfomance.ru/api/sheets/add', {
-//           method: 'POST',
-//           headers: {
-//             'Content-Type': 'application/json',
-//           },
-//           body: JSON.stringify(data),
-//         });
-//         console.log('✅ Ваша заявка успешно отправлена!');
-//       } catch (err) {
-//         console.error('Ошибка при отправке заявки:', err);
-//         ctx.reply('❌ Ошибка при отправке заявки.');
-//       }
-
-//       userState.delete(ctx.from.id);
-//     } else {
-//       ctx.reply('❌ Неверный формат email. Пожалуйста, введите корректный email (например, example@mail.com).');
-//     }
-//   }
-// });
 
 
 
@@ -364,6 +320,8 @@ bot.action('next_slider', (ctx) => {
   const user = userState.get(ctx.from.id);
   user.sliderImg = [];
   user.step = 'sliderImg';
+
+  
   ctx.reply('Отправьте URL изображения для слайдера:');
   ctx.answerCbQuery();  // Немедленный ответ
 });
@@ -400,10 +358,12 @@ bot.action('finish_case', async (ctx) => {
     // Проверяем и вставляем изображения слайдера
     if (user.sliderImg && user.sliderImg.length > 0) {
     
-      
+   
       for (const img of user.sliderImg) {
+       
+        
         await dbClient.query(
-          'INSERT INTO sliderImg (case_id, image_url) VALUES ($1, $2)',
+          'INSERT INTO sliderimg (case_id, image_url) VALUES ($1, $2)',
           [caseId, img]
         );
       }
@@ -451,7 +411,7 @@ bot.launch({
     hookPath: `/${TOKEN}`
   }
 });
-// bot.launch()
+
 
 
 
