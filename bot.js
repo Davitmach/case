@@ -115,57 +115,7 @@ bot.action('open_menu', (ctx) => {
   ctx.answerCbQuery();  // Немедленный ответ
 });
 
-bot.on('text', async (ctx) => {
-  const user = userState.get(ctx.from.id);
-  if (!user) return;
 
-  if (user.step === 'name') {
-    user.name = ctx.message.text;
-    user.step = 'position';
-    ctx.reply('Введите вашу должность:');
-  } else if (user.step === 'position') {
-    user.position = ctx.message.text;
-    user.step = 'phone';
-    ctx.reply('Введите ваш номер телефона:');
-  } else if (user.step === 'phone') {
-    user.phone = ctx.message.text;
-    user.step = 'email';
-    ctx.reply('Введите ваш email:');
-  } else if (user.step === 'email') {
-    const email = ctx.message.text;
-    if (validateEmail(email)) {
-      user.email = email;
-      user.step = 'finish';
-      ctx.reply('✅ Ваша заявка успешно отправлена!');
-      
-      // Отправляем данные в API
-      const data = {
-        name: user.name,
-        position: user.position,
-        phone: user.phone,
-        email: user.email,
-      };
-
-      try {
-        await fetch('https://itperfomance.ru/api/sheets/add', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(data),
-        });
-        console.log('✅ Ваша заявка успешно отправлена!');
-      } catch (err) {
-        console.error('Ошибка при отправке заявки:', err);
-        ctx.reply('❌ Ошибка при отправке заявки.');
-      }
-
-      userState.delete(ctx.from.id);
-    } else {
-      ctx.reply('❌ Неверный формат email. Пожалуйста, введите корректный email (например, example@mail.com).');
-    }
-  }
-});
 bot.command('help', async (ctx) => {  
   if (!isUserAllowed(ctx)) return;  
 
@@ -215,26 +165,75 @@ bot.action('get_cases', async (ctx) => {
 
 
 bot.action('new_case', (ctx) => {
+  
+  
   if (!isUserAllowed(ctx)) return;
+  
   userState.set(ctx.from.id, { step: 'title' });
   ctx.reply('Введите название кейса (Title):');
   ctx.answerCbQuery();  // Ответ сразу
 });
 
-// Обработка текста и сбор данных для нового кейса
-// Обработка текста и сбор данных для нового кейса
 bot.on('text', async (ctx) => {
   const user = userState.get(ctx.from.id);
-  if (!user) return;
+  
+console.log(1);
 
+  if (!user) return;
+  if (user.step === 'name') {
+    user.name = ctx.message.text;
+    user.step = 'position';
+    ctx.reply('Введите вашу должность:');
+  } else if (user.step === 'position') {
+    user.position = ctx.message.text;
+    user.step = 'phone';
+    ctx.reply('Введите ваш номер телефона:');
+  } else if (user.step === 'phone') {
+    user.phone = ctx.message.text;
+    user.step = 'email';
+    ctx.reply('Введите ваш email:');
+  } else if (user.step === 'email') {
+    const email = ctx.message.text;
+    if (validateEmail(email)) {
+      user.email = email;
+      user.step = 'finish';
+      ctx.reply('✅ Ваша заявка успешно отправлена!');
+      
+      // Отправляем данные в API
+      const data = {
+        name: user.name,
+        position: user.position,
+        phone: user.phone,
+        email: user.email,
+      };
+
+      try {
+        await fetch('https://itperfomance.ru/api/sheets/add', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        });
+        console.log('✅ Ваша заявка успешно отправлена!');
+      } catch (err) {
+        console.error('Ошибка при отправке заявки:', err);
+        ctx.reply('❌ Ошибка при отправке заявки.');
+      }
+
+      userState.delete(ctx.from.id);
+    } else {
+      ctx.reply('❌ Неверный формат email. Пожалуйста, введите корректный email (например, example@mail.com).');
+    }
+  }
   if (user.step === 'title') {
     user.title = ctx.message.text;
     user.step = 'date';
-    ctx.reply('Введите дату:');
+    ctx.reply('Введите дату (например, 2025-04-01):');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
     user.step = 'case_type';
-    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка ботов", "Веб-Дизайн", "Интеграция ИИ", "Мобильные приложения"):');
+    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка ботов"):');
   } else if (user.step === 'case_type') {
     user.case_type = ctx.message.text;
     user.step = 'mainImg';
@@ -249,7 +248,7 @@ bot.on('text', async (ctx) => {
     ctx.reply('Введите заголовок информации (info title):');
   } else if (user.step === 'info_title') {
     if (!user.info) user.info = [];
-    user.info.push({ title: ctx.message.text, description: '' });  
+    user.info.push({ title: ctx.message.text, description: '' });
     user.step = 'info_description';
     ctx.reply('Введите описание информации (info description):');
   } else if (user.step === 'info_description') {
@@ -259,17 +258,61 @@ bot.on('text', async (ctx) => {
       [Markup.button.callback('➡️ Перейти к изображениям', 'next_slider')]
     ]));
     user.step = 'wait';
-  } else if (user.step === 'sliderImg') {
-    if (!user.sliderImg) user.sliderImg = [];
-    user.sliderImg.push(ctx.message.text);
-    ctx.reply('Добавить ещё изображение?', Markup.inlineKeyboard([
-      [Markup.button.callback('➕ Да', 'add_slider')],
-      [Markup.button.callback('✅ Завершить', 'finish_case')]
-    ]));
-    user.step = 'wait';
   }
 });
+// bot.on('text', async (ctx) => {
+//   console.log(1);
+  
+//   const user = userState.get(ctx.from.id);
+//   if (!user) return;
 
+//   if (user.step === 'name') {
+//     user.name = ctx.message.text;
+//     user.step = 'position';
+//     ctx.reply('Введите вашу должность:');
+//   } else if (user.step === 'position') {
+//     user.position = ctx.message.text;
+//     user.step = 'phone';
+//     ctx.reply('Введите ваш номер телефона:');
+//   } else if (user.step === 'phone') {
+//     user.phone = ctx.message.text;
+//     user.step = 'email';
+//     ctx.reply('Введите ваш email:');
+//   } else if (user.step === 'email') {
+//     const email = ctx.message.text;
+//     if (validateEmail(email)) {
+//       user.email = email;
+//       user.step = 'finish';
+//       ctx.reply('✅ Ваша заявка успешно отправлена!');
+      
+//       // Отправляем данные в API
+//       const data = {
+//         name: user.name,
+//         position: user.position,
+//         phone: user.phone,
+//         email: user.email,
+//       };
+
+//       try {
+//         await fetch('https://itperfomance.ru/api/sheets/add', {
+//           method: 'POST',
+//           headers: {
+//             'Content-Type': 'application/json',
+//           },
+//           body: JSON.stringify(data),
+//         });
+//         console.log('✅ Ваша заявка успешно отправлена!');
+//       } catch (err) {
+//         console.error('Ошибка при отправке заявки:', err);
+//         ctx.reply('❌ Ошибка при отправке заявки.');
+//       }
+
+//       userState.delete(ctx.from.id);
+//     } else {
+//       ctx.reply('❌ Неверный формат email. Пожалуйста, введите корректный email (например, example@mail.com).');
+//     }
+//   }
+// });
 
 
 
@@ -408,7 +451,7 @@ bot.launch({
     hookPath: `/${TOKEN}`
   }
 });
-
+// bot.launch()
 
 
 
