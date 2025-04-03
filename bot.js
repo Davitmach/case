@@ -232,8 +232,14 @@ bot.on('text', async (ctx) => {
     ctx.reply('Введите дату:');
   } else if (user.step === 'date') {
     user.date = ctx.message.text;
-    user.step = 'case_type';
-    ctx.reply('Введите тип кейса (например, "Создание сайтов", "Разработка ботов"):');
+    ctx.reply('Выберите тип кейса:', Markup.inlineKeyboard([
+      [Markup.button.callback('Создание сайтов', 'case_type_Создание сайтов')],
+      [Markup.button.callback('Разработка ботов', 'case_type_Разработка ботов')],
+      [Markup.button.callback('Веб-дизайн', 'case_type_Веб-дизайн')],
+      [Markup.button.callback('Интеграция ИИ', 'case_type_Интеграция ИИ')],
+      [Markup.button.callback('Мобильные приложения', 'case_type_Мобильные приложения')]
+    ]));
+    user.step = 'wait_case_type'; // Ждём выбора типа кейса
   } else if (user.step === 'case_type') {
     user.case_type = ctx.message.text;
     user.step = 'mainImg';
@@ -295,7 +301,15 @@ bot.action('add_info', (ctx) => {
   // Acknowledge the callback query
   ctx.answerCbQuery();
 });
-
+bot.action(/^case_type_(.+)$/, (ctx) => {
+  const user = userState.get(ctx.from.id);
+  if (!user) return;
+  
+  user.case_type = ctx.match[1]; // Сохраняем выбранный тип
+  user.step = 'mainImg'; // Переход к следующему шагу
+  ctx.reply('Отправьте URL главного изображения (mainImg):');
+  ctx.answerCbQuery(); 
+});
 
 bot.on('text', async (ctx) => {
   const user = userState.get(ctx.from.id);
@@ -412,6 +426,7 @@ bot.launch({
   }
 });
 // bot.launch()
+
 
 
 
