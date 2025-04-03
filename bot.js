@@ -146,7 +146,8 @@ bot.action('get_cases', async (ctx) => {
     if (cases.length > 0) {
       for (const caseItem of cases) {
         ctx.reply(
-          `🆔 ID: ${caseItem.id}\n📌 Название: ${caseItem.title}\n📅 Дата: ${caseItem.date}`,
+        `Название: ${caseItem.title}\n📅 Дата: ${caseItem.date}\nТип: 📝 ${caseItem.case_type}\nКартинка: <img src="${caseItem.mainimg}" alt="Картинка">`
+,
           Markup.inlineKeyboard([
             [Markup.button.callback('❌ Удалить', `delete_case_${caseItem.id}`)]
           ])
